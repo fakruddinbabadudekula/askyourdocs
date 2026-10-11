@@ -14,28 +14,23 @@ class FaissStore(AbstractVectorStore):
         self._store_path = vector_dir
 
     @classmethod
-    def create(
-        cls,
-        vector_dir: Path,
-        embedding_client: Embeddings,
-        dimensions: int,
+    def create_or_load(
+        cls, vector_dir: Path, embedding_client: Embeddings, dimensions: int
     ) -> "FaissStore":
-        if dimensions <= 0:
-            raise ValueError(f"dimensions must be > 0, got {dimensions}")
+        if (vector_dir / "index.faiss").exists():
+            if dimensions <= 0:
+                raise ValueError(f"dimensions must be > 0, got {dimensions}")
 
-        vector_dir.mkdir(parents=True, exist_ok=True)
-        index = faiss.IndexFlatL2(dimensions)
-        store = FAISS(
-            embedding_function=embedding_client,
-            index=index,
-            docstore=InMemoryDocstore(),
-            index_to_docstore_id={},
-        )
-        store.save_local(str(vector_dir))
-        return cls(store, vector_dir)
-
-    @classmethod
-    def load(cls, vector_dir: Path, embedding_client: Embeddings) -> "FaissStore":
+            vector_dir.mkdir(parents=True, exist_ok=True)
+            index = faiss.IndexFlatL2(dimensions)
+            store = FAISS(
+                embedding_function=embedding_client,
+                index=index,
+                docstore=InMemoryDocstore(),
+                index_to_docstore_id={},
+            )
+            store.save_local(str(vector_dir))
+            return cls(store, vector_dir)
         store = FAISS.load_local(
             str(vector_dir),
             embedding_client,
