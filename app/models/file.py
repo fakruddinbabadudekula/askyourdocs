@@ -1,7 +1,7 @@
 """Module contain file Database Model"""
 
 from app.domain.Notebook import FileType
-from app.core.db import Base
+from app.infrastructure.db import Base
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from datetime import datetime, timezone
 from sqlalchemy import ForeignKey, Integer, String, DateTime, func, Enum as SqlEnum

@@ -1,9 +1,8 @@
 from __future__ import annotations
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from uuid import UUID, uuid4
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from enum import Enum
-from app.core.config import settings
 
 
 class TokenStatus(str, Enum):
@@ -30,6 +29,7 @@ class RefreshToken:
         user_id: UUID,
         family_id: UUID,
         created_at: datetime,
+        expires_at: datetime,
     ) -> RefreshToken:
         return cls(
             token_id=uuid4(),
@@ -38,7 +38,7 @@ class RefreshToken:
             user_id=user_id,
             created_at=created_at,
             family_id=family_id,
-            expires_at=created_at + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
+            expires_at=expires_at,
             revoked_at=None,
         )
 

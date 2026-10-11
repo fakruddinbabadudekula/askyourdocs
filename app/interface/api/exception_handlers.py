@@ -102,7 +102,7 @@ async def operational_exception_handler(
 
     
     if isinstance(exc, RefreshTokenValidationException):
-        delete_refresh_cookie(response) #when we hit token validation error like reused or invalid token, we need to delete that invalid token in client cookie.
+        delete_refresh_cookie(response,request.app.state.cookie_policy) #when we hit token validation error like reused or invalid token, we need to delete that invalid token in client cookie.
     return response
 
 

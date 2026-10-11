@@ -18,24 +18,23 @@ class FaissStore(AbstractVectorStore):
         cls, vector_dir: Path, embedding_client: Embeddings, dimensions: int
     ) -> "FaissStore":
         if (vector_dir / "index.faiss").exists():
-            if dimensions <= 0:
-                raise ValueError(f"dimensions must be > 0, got {dimensions}")
-
-            vector_dir.mkdir(parents=True, exist_ok=True)
-            index = faiss.IndexFlatL2(dimensions)
-            store = FAISS(
-                embedding_function=embedding_client,
-                index=index,
-                docstore=InMemoryDocstore(),
-                index_to_docstore_id={},
+            store = FAISS.load_local(
+                str(vector_dir),
+                embedding_client,
+                allow_dangerous_deserialization=True,
             )
-            store.save_local(str(vector_dir))
             return cls(store, vector_dir)
-        store = FAISS.load_local(
-            str(vector_dir),
-            embedding_client,
-            allow_dangerous_deserialization=True,
+        if dimensions <= 0:
+            raise ValueError(f"dimensions must be > 0, got {dimensions}")
+        vector_dir.mkdir(parents=True, exist_ok=True)
+        index = faiss.IndexFlatL2(dimensions)
+        store = FAISS(
+            embedding_function=embedding_client,
+            index=index,
+            docstore=InMemoryDocstore(),
+            index_to_docstore_id={},
         )
+        store.save_local(str(vector_dir))
         return cls(store, vector_dir)
 
     async def add_documents(self, chunks):

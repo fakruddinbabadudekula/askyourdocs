@@ -3,13 +3,7 @@ from app.schemas.user import RegisterUser
 from app.schemas.auth import LoginData, TokenData
 from app.domain.User import User
 from app.domain.unit_of_work import AbstractUnitOfWork
-from app.core.security import hash_password
-from app.core.security import (
-    create_access_token,
-    create_refresh_token,
-    verify_password,
-    hash_token,
-)
+from app.domain.security import HashService, TokenService, PasswordHasher
 import uuid
 from app.core.exceptions import (
     InvalidCredentialsException,
@@ -22,13 +16,26 @@ _DUMMY_HASH = "$argon2id$v=19$m=65536,t=3,p=4$6j2nlBJCSCkFIMTYG4MQYg$hoq39+Hpcoz
 
 
 class AuthService:
-    def __init__(self, uow: AbstractUnitOfWork):
-        self.uow = uow
+    def __init__(
+        self,
+        uow: AbstractUnitOfWork,
+        hash_service: HashService,
+        token_service: TokenService,
+        password_hasher: PasswordHasher,
+    ):
+        self._uow = uow
+        self._hash_service = hash_service
+        self._token_service = token_service
+        self._password_hasher = password_hasher
 
     def _generate_tokens(self, user_id: uuid.UUID, now: datetime) -> TokenData:
         user_id = str(user_id)
-        access_token, access_expire_time = create_access_token(user_id, now)
-        refresh_token, refresh_expire_time = create_refresh_token(user_id, now)
+        access_token, access_expire_time = self._token_service.create_token(
+            user_id, now, "access"
+        )
+        refresh_token, refresh_expire_time = self._token_service.create_token(
+            user_id, now, "refresh"
+        )
         return TokenData(
             access_token=access_token,
             refresh_token=refresh_token,
@@ -39,45 +46,50 @@ class AuthService:
     async def register(self, user_data: RegisterUser) -> User:
         new_user = User.create(
             **user_data.model_dump(exclude={"password"}),
-            hashed_password=hash_password(user_data.password),
+            hashed_password=self._password_hasher.hash_password(user_data.password),
         )
-        async with self.uow:
-            await self.uow.users.create_user(new_user)
-            await self.uow.commit()
+        async with self._uow:
+            await self._uow.users.create_user(new_user)
+            await self._uow.commit()
 
         return new_user
 
     async def login(self, user_data: LoginData) -> TokenData:
-        async with self.uow:
-            user = await self.uow.users.get_user_by_email(user_data.email)
+        async with self._uow:
+            user = await self._uow.users.get_user_by_email(user_data.email)
             if user == None:
-                verify_password(user_data.password, _DUMMY_HASH)
+                self._password_hasher.verify_password(user_data.password, _DUMMY_HASH)
                 raise InvalidCredentialsException(
                     "Invalid credentials email or password",
                     details={"user_email": user_data.email},
                 )
-            if not verify_password(user_data.password, user.hashed_password):
+            if not self._password_hasher.verify_password(
+                user_data.password, user.hashed_password
+            ):
                 raise InvalidCredentialsException(
                     "Invalid credentials email or password",
                     details={"user_email": user_data.email},
                 )
             now = datetime.now(timezone.utc)
             token_data = self._generate_tokens(user.user_id, now)
-            await self.uow.refresh_tokens.create_token(
+            await self._uow.refresh_tokens.create_token(
                 RefreshToken.create(
-                    hashed_token=hash_token(token_data.refresh_token),
+                    hashed_token=self._hash_service.hash_content(
+                        token_data.refresh_token
+                    ),
                     user_id=user.user_id,
                     family_id=uuid.uuid4(),
                     created_at=now,
+                    expires_at=token_data.refresh_expire_time,
                 )
             )
-            await self.uow.commit()
+            await self._uow.commit()
             return token_data
 
     async def refresh(self, token: str) -> TokenData:
-        async with self.uow:
-            stored_token = await self.uow.refresh_tokens.get_token_by_hash(
-                hash_token(token)
+        async with self._uow:
+            stored_token = await self._uow.refresh_tokens.get_token_by_hash(
+                self._hash_service.hash_content(token)
             )
             if stored_token is None:
                 raise RefreshTokenValidationException(
@@ -85,24 +97,24 @@ class AuthService:
                     details={"WWW-Authenticate": "Bearer"},
                 )
             if stored_token.is_revoked():
-                await self.uow.refresh_tokens.revoke_all_tokens_by_family_id(
+                await self._uow.refresh_tokens.revoke_all_tokens_by_family_id(
                     stored_token.family_id
                 )
-                await self.uow.commit()
+                await self._uow.commit()
                 raise RefreshTokenReUsedDetection(
                     "Refresh token reuse detected; token revoked",
                     details={"WWW-Authenticate": "Bearer"},
                 )
             if stored_token.is_expired():
                 stored_token.status = TokenStatus.EXPIRED
-                await self.uow.refresh_tokens.save(stored_token)
-                await self.uow.commit()
+                await self._uow.refresh_tokens.save(stored_token)
+                await self._uow.commit()
                 raise RefreshTokenValidationException(
                     "Refresh token expired",
                     details={"WWW-Authenticate": "Bearer"},
                 )
 
-            user = await self.uow.users.get_user_by_id(stored_token.user_id)
+            user = await self._uow.users.get_user_by_id(stored_token.user_id)
             if not user:
                 raise RefreshTokenValidationException(
                     "Invalid credentials token",
@@ -111,37 +123,40 @@ class AuthService:
             now = datetime.now(timezone.utc)
             token_data = self._generate_tokens(user.user_id, now)
             stored_token.revoke()
-            await self.uow.refresh_tokens.save(stored_token)
-            await self.uow.refresh_tokens.create_token(
+            await self._uow.refresh_tokens.save(stored_token)
+            await self._uow.refresh_tokens.create_token(
                 RefreshToken.create(
-                    hashed_token=hash_token(token_data.refresh_token),
+                    hashed_token=self._hash_service.hash_content(
+                        token_data.refresh_token
+                    ),
                     user_id=user.user_id,
                     family_id=stored_token.family_id,
                     created_at=now,
+                    expires_at=token_data.refresh_expire_time,
                 )
             )
-            await self.uow.commit()
+            await self._uow.commit()
             return token_data
 
     async def logout(self, token: str):
-        async with self.uow:
-            stored_token = await self.uow.refresh_tokens.get_token_by_hash(
-                hash_token(token)
+        async with self._uow:
+            stored_token = await self._uow.refresh_tokens.get_token_by_hash(
+                self._hash_service.hash_content(token)
             )
             if stored_token is None or stored_token.is_expired():
                 stored_token.status = TokenStatus.EXPIRED
-                await self.uow.refresh_tokens.save(stored_token)
-                await self.uow.commit()
+                await self._uow.refresh_tokens.save(stored_token)
+                await self._uow.commit()
                 return  # idempotent, nothing to do
             if stored_token.is_revoked():
-                await self.uow.refresh_tokens.revoke_all_tokens_by_family_id(
+                await self._uow.refresh_tokens.revoke_all_tokens_by_family_id(
                     stored_token.family_id
                 )
-                await self.uow.commit()
+                await self._uow.commit()
                 raise RefreshTokenReUsedDetection(
                     "Refresh token reuse detected; session revoked",
                     details={"WWW-Authenticate": "Bearer"},
                 )
             stored_token.revoke()
-            await self.uow.refresh_tokens.save(stored_token)
-            await self.uow.commit()
+            await self._uow.refresh_tokens.save(stored_token)
+            await self._uow.commit()

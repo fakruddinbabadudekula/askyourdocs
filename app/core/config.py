@@ -9,11 +9,6 @@ from functools import (
 )
 
 from pathlib import Path
-from openai import (
-    APIError,
-    RateLimitError,
-)
-import asyncio
 
 
 class Settings(BaseSettings):
@@ -33,12 +28,7 @@ class Settings(BaseSettings):
     # App Information
     APP_NAME: str = "NotebookLm"
     APP_PATH: Path = BASE_PATH / "app"
-    RETRYABLE_LLM_EXCEPTIONS:  tuple[type[BaseException], ...] = (
-        ConnectionError,
-        asyncio.TimeoutError,
-        RateLimitError,
-        APIError,
-    ) #type[BaseException] means classess of BaseException instead of instances
+
     # Data Path
     DATA_PATH: Path = BASE_PATH / "data"
 
@@ -79,6 +69,9 @@ class Settings(BaseSettings):
     RETRIEVER_SEARCH_TYPE: str = "similarity"
     RETRIEVER_TOP_K_DOCS: int = 5
     RETRIEVER_FAISS_PRE_DOC: int = 100
+
+    # Cookie
+    COOKIE_SECURE: bool = False
 
     class Config:
         env_file = ".env"  # Look for .env file

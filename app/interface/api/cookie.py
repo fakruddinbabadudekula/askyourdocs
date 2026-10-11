@@ -1,27 +1,36 @@
 from fastapi import Response, Cookie
-from app.core.composition import get_refresh_token_expire_days
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Literal
 
 
-def set_refresh_cookie(response: Response, token: str):
+@dataclass(frozen=True)
+class CookiePolicy:
+    secure: bool = False
+    name: str = "refresh_token"
+    path: str = "/api/v1/auth"  # covers /refresh and /logout by default
+    samesite: Literal["strict", "lax", "none"] = "strict"
+
+
+def set_refresh_cookie(
+    response: Response, token: str, expires_at: datetime, policy: CookiePolicy
+) -> None:
     response.set_cookie(
-        key="refresh_token",
+        key=policy.name,
         value=token,
-        path="/api/v1/auth",  # why upto /auth instead of /refresh because of we need to access cookie for /logout
-        secure=False,  # For postman testing only, make True in production.
+        expires=expires_at,
+        path=policy.path,
+        secure=policy.secure,
         httponly=True,
-        samesite="strict",
-        max_age=60
-        * 60
-        * 24
-        * get_refresh_token_expire_days(),  # why we multiply, because max_age accepts in seconds.
+        samesite=policy.samesite,
     )
 
 
-def delete_refresh_cookie(response: Response):
+def delete_refresh_cookie(response: Response, policy: CookiePolicy) -> None:
     response.delete_cookie(
-        key="refresh_token",
-        path="/api/v1/auth",
+        key=policy.name,
+        path=policy.path,
+        secure=policy.secure,
         httponly=True,
-        secure=False,
-        samesite="strict",
+        samesite=policy.samesite,
     )

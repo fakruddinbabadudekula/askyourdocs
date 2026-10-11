@@ -1,9 +1,11 @@
 from typing import Optional, AsyncIterator
 import uuid
-from fastapi import APIRouter, Depends, Form, UploadFile, File, Request
-from app.domain.unit_of_work import AbstractUnitOfWork
-from app.interface.api.dependencies import get_uow, get_current_user_id
-from app.core.composition import get_file_ingestion_service, get_vector_store_service
+from fastapi import APIRouter, Depends, Form, UploadFile, File
+from app.application.file_ingestion_service import FileIngestionService
+from app.interface.api.dependencies import (
+    get_current_user_id,
+    get_file_ingestion_service,
+)
 from pathlib import Path
 from app.interface.api.schemas.upload import UploadOutFileMetadata
 
@@ -20,20 +22,15 @@ async def to_async_iterator(
 
 @router.post("/upload", response_model=UploadOutFileMetadata)
 async def upload(
-    request: Request,
     file: UploadFile = File(...),
     notebook_id: Optional[uuid.UUID] = Form(None),
     user_id: uuid.UUID = Depends(get_current_user_id),
-    uow: AbstractUnitOfWork = Depends(get_uow),
+    file_ingestion_service: FileIngestionService = Depends(get_file_ingestion_service),
 ):
     stream = to_async_iterator(file)
     file_name = file.filename
     file_ext = Path(file.filename).suffix
-    service = get_file_ingestion_service(
-        uow, get_vector_store_service(vector_store=request.app.state.vector_store)
-    )
-
-    file_metadata = await service.upload_files(
+    file_metadata = await file_ingestion_service.upload_files(
         stream, file_name, file_ext, notebook_id, user_id
     )
     return file_metadata

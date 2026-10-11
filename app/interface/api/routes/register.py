@@ -2,12 +2,11 @@
 contains only register router"""
 
 from fastapi import APIRouter, Depends
+from app.application.auth_service import AuthService
 from app.schemas.user import RegisterUser
 from app.interface.api.schemas.auth import BaseUser
 from fastapi import status
-from app.domain.unit_of_work import AbstractUnitOfWork
-from app.interface.api.dependencies import get_uow
-from app.core.composition import get_auth_service
+from app.interface.api.dependencies import get_auth_service
 
 router = APIRouter()
 
@@ -21,12 +20,13 @@ router = APIRouter()
         409: {"description": "A user with this email already exists"},
     },
 )
-async def register(payload: RegisterUser, uow: AbstractUnitOfWork = Depends(get_uow)):
+async def register(
+    payload: RegisterUser, auth_service: AuthService = Depends(get_auth_service)
+):
     """
     Create a new user account.
 
     Passwords are hashed with Argon2 before storage; the raw password is
     never persisted or returned.
     """
-    auth_service = get_auth_service(uow)
     return await auth_service.register(payload)
