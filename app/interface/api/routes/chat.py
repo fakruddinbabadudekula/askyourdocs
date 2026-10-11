@@ -1,10 +1,11 @@
 """Module for conversation routers
 contains chat router which is async without streaming"""
 
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, Request
 from app.interface.api.schemas.chat import ChatRequest, ChatRespose
-from app.interface.api.dependencies import get_current_user, get_uow
-from app.models.user import User
+from app.interface.api.dependencies import get_current_user_id, get_uow
 from app.core.composition import get_notebook_chat_service, get_retriever_filter
 from app.domain.unit_of_work import AbstractUnitOfWork
 
@@ -25,7 +26,7 @@ router = APIRouter()
 async def chat(
     payload: ChatRequest,
     request: Request,
-    current_user: User = Depends(get_current_user),
+    user_id: UUID = Depends(get_current_user_id),
     uow: AbstractUnitOfWork = Depends(get_uow),
 ) -> ChatRespose:
     """
@@ -36,7 +37,6 @@ async def chat(
     notebook_chat_service = get_notebook_chat_service(
         uow, request.app.state.vector_store
     )
-    user_id = current_user.user_id
     notebook_id = payload.notebook_id
     retriever_filter = get_retriever_filter(user_id, notebook_id)
     query = payload.query

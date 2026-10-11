@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from app.domain.entities.RetrieverFilter import RetrieverFilter
+from app.infrastructure.unit_of_work import SqlAlchemyUnitOfWork
 from app.rag.interface.workflow import Workflow
 from app.infrastructure.rag.workflow import LangGraphWorkflow
 from app.rag.interface.doc_process import (
@@ -117,12 +118,14 @@ def get_llm_client() -> AsyncLLMClient:
         RetryConfig(
             max_llm_call_retries=settings.MAX_LLM_CALL_RETRIES,
             llm_call_asyn_timeout=settings.LLM_CALL_ASYNC_TIMEOUT,
-            retryable_llm_exceptions=settings.RETRYABLE_LLM_EXCEPTIONS
+            retryable_llm_exceptions=settings.RETRYABLE_LLM_EXCEPTIONS,
         ),
     )
 
-def get_retryable_llm_exceptions()->set[BaseException]:
+
+def get_retryable_llm_exceptions() -> set[BaseException]:
     return settings.RETRYABLE_LLM_EXCEPTIONS
+
 
 def get_retriever_filter(user_id: UUID, notebook_id: UUID) -> RetrieverFilter:
     return RetrieverFilter.create(
@@ -144,8 +147,16 @@ def get_notebook_chat_service(
 ) -> NotebookChatService:
 
     return NotebookChatService(
-        uow=uow, vector_store=vector_store, workflow=get_rag_workflow(), retryable_exceptions=get_retryable_llm_exceptions()
+        uow=uow,
+        vector_store=vector_store,
+        workflow=get_rag_workflow(),
+        retryable_exceptions=get_retryable_llm_exceptions(),
     )
 
-def get_refresh_token_expire_days()->int:
+
+def get_refresh_token_expire_days() -> int:
     return settings.REFRESH_TOKEN_EXPIRE_DAYS
+
+
+def get_unit_of_work(session_maker) -> AbstractUnitOfWork:
+    return SqlAlchemyUnitOfWork(session_maker)

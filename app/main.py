@@ -7,6 +7,7 @@ from app.interface.api.routes.auth import router as auth_router
 from app.interface.api.routes.register import router as register_router
 from app.interface.api.routes.upload import router as upload_router
 from app.interface.api.routes.chat import router as chat_router
+from app.interface.api.routes.test import router as test_router
 from app.interface.api.middleware import logger_middleware
 from contextlib import asynccontextmanager
 from app.core.config import settings
@@ -76,7 +77,7 @@ app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
 app.include_router(register_router, prefix="/api/v1", tags=["register"])
 app.include_router(upload_router, prefix="/api/v1", tags=["upload"])
 app.include_router(chat_router, prefix="/api/v1", tags=["chat"])
-
+app.include_router(test_router,prefix="/api/v1", tags=["test"])
 
 @app.get("/")
 def hello():

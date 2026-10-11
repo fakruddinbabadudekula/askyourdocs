@@ -2,28 +2,22 @@
 contains get_current_user:which returns the current user object,
 """
 
-from app.models.user import User
 from fastapi import Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from jose import JWTError,ExpiredSignatureError
-from sqlalchemy.ext.asyncio import AsyncSession
+from jose import JWTError, ExpiredSignatureError
 from app.core.exceptions import InvalidCredentialsException
-from sqlalchemy import select
-from app.core.db import get_db
-from app.core.security import decode_token
-import uuid
 from app.domain.unit_of_work import AbstractUnitOfWork
-from app.infrastructure.unit_of_work import SqlAlchemyUnitOfWork
+from app.core.composition import get_unit_of_work
+from app.core.security import decode_token
+from uuid import UUID
 from app.core.db import async_session_factory
-from app.interface.api.schemas.auth import CurrentUserContext
 
 security = HTTPBearer()
 
 
-async def get_current_user(
+async def get_current_user_id(
     credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: AsyncSession = Depends(get_db),
-) -> CurrentUserContext:
+) -> UUID:
 
     # raise when JWTError or invalid raise
     credentials_exception = InvalidCredentialsException(
@@ -39,22 +33,13 @@ async def get_current_user(
             raise credentials_exception
     except ExpiredSignatureError as e:
         raise InvalidCredentialsException(
-            "Token expired",details={"WWW-Authenticate": "Bearer"}
+            "Token expired", details={"WWW-Authenticate": "Bearer"}
         )
     except JWTError:
         raise credentials_exception
 
-    user_id = uuid.UUID(user_id)
-    statement = select(User).where(User.user_id == user_id)
-    result = await db.execute(statement)
-    user = result.scalars().first()
-    if user==None:
-        raise credentials_exception
-    return CurrentUserContext(
-        email=user.email,
-        user_id=user.user_id
-    )
+    return UUID(user_id)
 
 
-def get_uow()->AbstractUnitOfWork:
-    return SqlAlchemyUnitOfWork(async_session_factory)
+def get_uow() -> AbstractUnitOfWork:
+    return get_unit_of_work(async_session_factory)

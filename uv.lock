@@ -1438,6 +1438,7 @@ dependencies = [
     { name = "python-jose", extra = ["cryptography"] },
     { name = "python-multipart" },
     { name = "sqlalchemy" },
+    { name = "tenacity" },
     { name = "ulid" },
     { name = "uvicorn" },
 ]
@@ -1470,6 +1471,7 @@ requires-dist = [
     { name = "python-jose", extras = ["cryptography"], specifier = ">=3.5.0" },
     { name = "python-multipart", specifier = ">=0.0.32" },
     { name = "sqlalchemy", specifier = ">=2.0.46" },
+    { name = "tenacity", specifier = ">=9.1.2" },
     { name = "ulid", specifier = ">=1.1" },
     { name = "uvicorn", specifier = ">=0.40.0" },
 ]
