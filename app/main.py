@@ -22,7 +22,7 @@ logger = getLogger(__name__)
 async def lifespan(app):
     setup_logging()
     logger.info("Server Started")
-    app.state.container=await Container.get_container()
+    app.state.container=await Container.create()
     app.state.cookie_policy=CookiePolicy(secure=settings.COOKIE_SECURE)
     logger.info("Tables are created ")
     yield

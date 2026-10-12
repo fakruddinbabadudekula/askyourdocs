@@ -8,6 +8,16 @@ from app.core.exceptions import InvalidCredentialsException, LLMServieException
 from app.domain.Notebook import MessageRole, TopKDocs
 from app.rag.interface.workflow import Workflow
 
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class RetrievalConfig:
+    search_type: str
+    top_k: int
+    fetch_k: int
+
+
 class NotebookChatService:
     def __init__(
         self,
@@ -15,20 +25,32 @@ class NotebookChatService:
         vector_store: AbstractVectorStore,
         workflow: Workflow,
         retryable_exceptions: tuple[type[BaseException], ...],
+        retriever_config: RetrievalConfig,
     ):
         self._uow = uow
         self._vector_store = vector_store
         self._workflow = workflow
         self._RETRYABLE_LLM_EXCEPTIONS = retryable_exceptions
+        self._retriever_config = retriever_config
+
+    def _build_retriever_filter(
+        self, user_id: UUID, notebook_id: UUID
+    ) -> RetrieverFilter:
+        return RetrieverFilter.create(
+            search_type=self._retriever_config.search_type,
+            search_kwargs={
+                "k": self._retriever_config.top_k,
+                "fetch_k": self._retriever_config.fetch_k,
+                "filter": {"user_id": str(user_id), "notebook_id": str(notebook_id)},
+            },
+        )
 
     async def chat(
         self,
         user_id: UUID,
         notebook_id: UUID,
         query: str,
-        retriever_filter: RetrieverFilter,
     ) -> dict[str, Any]:
-        print(retriever_filter)
         async with self._uow:
             notebook = await self._uow.notebooks.get_notebook(notebook_id)
             if notebook is None:
@@ -42,7 +64,9 @@ class NotebookChatService:
             user_message = notebook.add_message(role=MessageRole.USER, content=query)
             try:
                 response = await self._workflow.execute(
-                    notebook.messages, self._vector_store, retriever_filter
+                    notebook.messages,
+                    self._vector_store,
+                    self._build_retriever_filter(user_id, notebook_id),
                 )
 
             except self._RETRYABLE_LLM_EXCEPTIONS as e:

@@ -1,6 +1,4 @@
 from dataclasses import dataclass
-from uuid import UUID
-from app.domain.entities.RetrieverFilter import RetrieverFilter
 from app.domain.security import HashService, PasswordHasher, TokenService
 from app.infrastructure.security import (
     HashLibHashService,
@@ -12,7 +10,6 @@ from app.infrastructure.unit_of_work import SqlAlchemyUnitOfWork
 from app.rag.interface.workflow import Workflow
 from app.infrastructure.rag.workflow import LangGraphWorkflow
 from app.rag.interface.doc_process import (
-    AbstractDocumentLoader,
     AbstractTextSplitter,
 )
 from app.rag.interface.llm_client import AsyncLLMClient
@@ -27,14 +24,13 @@ from app.core.config import settings
 from app.rag.interface.vector_store import AbstractVectorStore
 from app.infrastructure.rag.vector_stores.faiss_store import FaissStore
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
-from langchain_core.embeddings import Embeddings
 from app.infrastructure.file_repository import FileStorageRepository
 from app.domain.repositories.file_repository import AbstractFileStorageRepository
 from app.application.file_ingestion_service import FileIngestionService
 from app.domain.unit_of_work import AbstractUnitOfWork
 from app.application.vector_store_service import VectorStoreService
 from app.application.auth_service import AuthService
-from app.application.notebook_chat_service import NotebookChatService
+from app.application.notebook_chat_service import NotebookChatService, RetrievalConfig
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from openai import (
@@ -42,32 +38,31 @@ from openai import (
     RateLimitError,
 )
 import asyncio
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+)
 
 
 @dataclass
 class Container:
-    pdf_loader: AbstractDocumentLoader
-    text_splitter: AbstractTextSplitter
+    db_engine: AsyncEngine
     document_loader: DocumentLoader
-    embedding_model: Embeddings
     file_storage_repository: AbstractFileStorageRepository
-    llm_client: AsyncLLMClient
     rag_workflow: Workflow
-    llm_model: BaseChatModel
     password_hasher: PasswordHasher
     token_service: TokenService
     hash_service: HashService
     session_maker: async_sessionmaker[AsyncSession]
-    vector_store: AbstractVectorStore | None
+    vector_store: AbstractVectorStore
+    vector_store_service: VectorStoreService
     retryable_llm_exceptions: tuple[type[BaseException], ...]
+    retriever_config: RetrievalConfig
 
     def get_uow(self) -> AbstractUnitOfWork:
         return SqlAlchemyUnitOfWork(self.session_maker)
 
     def get_vector_store(self) -> AbstractVectorStore:
-        return FaissStore.create_or_load(
-            self.vector_folder, self.embedding_model, self.embedding_dimenstions
-        )
+        return self.vector_store
 
     def get_auth_service(self, uow: AbstractUnitOfWork) -> AuthService:
         return AuthService(
@@ -75,7 +70,7 @@ class Container:
         )
 
     def get_vector_store_service(self) -> VectorStoreService:
-        return VectorStoreService(self.vector_store)
+        return self.vector_store_service
 
     def get_file_ingestion_service(
         self, uow: AbstractUnitOfWork
@@ -90,40 +85,45 @@ class Container:
 
     def get_notebook_chat_service(self, uow: AbstractUnitOfWork) -> NotebookChatService:
         return NotebookChatService(
-            uow, self.vector_store, self.rag_workflow, self.retryable_llm_exceptions
+            uow,
+            self.vector_store,
+            self.rag_workflow,
+            self.retryable_llm_exceptions,
+            self.retriever_config,
         )
 
-    def get_retriever_filter(self, user_id: UUID, notebook_id: UUID) -> RetrieverFilter:
-        return RetrieverFilter.create(
-            search_type=settings.RETRIEVER_SEARCH_TYPE,
-            search_kwargs={
-                "k": settings.RETRIEVER_TOP_K_DOCS,
-                "fetch_k": settings.RETRIEVER_FAISS_PRE_DOC,
-                "filter": {"user_id": str(user_id), "notebook_id": str(notebook_id)},
-            },
-        )
+    async def shutdown(self) -> None:
+        # later we can also close the vector store connections also
+        await self.db_engine.dispose()
 
     @classmethod
-    async def get_container(cls):
+    async def create(cls):
         db_engine = create_db_engine(settings.DATABASE_URL)
         await init_db(db_engine)
         create_required_dir()
+        vector_store = get_vector_store()
         return cls(
-            pdf_loader=PDFLoader(),
-            text_splitter=get_splitter(),
+            db_engine=db_engine,
             document_loader=get_document_loader(),
-            embedding_model=get_embedding_model(),
             file_storage_repository=get_file_storage_repository(),
-            llm_client=get_llm_model(),
             rag_workflow=get_rag_workflow(),
-            llm_model=get_llm_model(),
             password_hasher=get_password_hasher(),
             token_service=get_token_service(),
             hash_service=get_hash_service(),
             retryable_llm_exceptions=get_retryable_llm_exceptions(),
-            vector_store=get_vector_store(),
+            vector_store=vector_store,
             session_maker=create_session_factory(db_engine),
+            vector_store_service=VectorStoreService(vector_store),
+            retriever_config=get_retriever_config(),
         )
+
+
+def get_retriever_config() -> RetrievalConfig:
+    return RetrievalConfig(
+        search_type=settings.RETRIEVER_SEARCH_TYPE,
+        top_k=settings.RETRIEVER_TOP_K_DOCS,
+        fetch_k=settings.RETRIEVER_FAISS_PRE_DOC,
+    )
 
 
 def create_required_dir():
@@ -132,9 +132,6 @@ def create_required_dir():
         settings.VECTOR_FOLDER,
     ]:
         path.mkdir(parents=True, exist_ok=True)
-        
-def get_loader() -> AbstractDocumentLoader:
-    return PDFLoader()
 
 
 def get_splitter() -> AbstractTextSplitter:
@@ -144,7 +141,7 @@ def get_splitter() -> AbstractTextSplitter:
 def get_document_loader():
     return LangchainDocumentLoader(
         {
-            ".pdf": get_loader(),
+            ".pdf": PDFLoader(),
         },
         get_splitter(),
     )
@@ -222,5 +219,3 @@ def get_vector_store() -> AbstractVectorStore:
         embedding_client=get_embedding_model(),
         dimensions=settings.EMBED_MODEL_SIZE,
     )
-
-

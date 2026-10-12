@@ -31,7 +31,6 @@ async def chat(
     payload: ChatRequest,
     user_id: UUID = Depends(get_current_user_id),
     notebook_chat_service: NotebookChatService = Depends(get_notebook_service),
-    container: Container = Depends(get_container),
 ) -> ChatRespose:
     """
     Runs the RAG pipeline: retrieves the top-k relevant chunks from the
@@ -40,10 +39,9 @@ async def chat(
     """
 
     notebook_id = payload.notebook_id
-    retriever_filter = container.get_retriever_filter(user_id, notebook_id)
     query = payload.query
     response = await notebook_chat_service.chat(
-        user_id, notebook_id, query, retriever_filter
+        user_id, notebook_id, query
     )
     return ChatRespose(
         query=payload.query,
