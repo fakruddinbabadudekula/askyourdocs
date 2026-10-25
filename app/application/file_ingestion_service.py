@@ -13,7 +13,7 @@ from app.core.exceptions import (
 from app.schemas.notebook import Notebook
 from app.schemas.document_ref import DocumentRef
 from app.schemas.file_metadata import FileMetadata
-from app.application.ports.rag.doc_processor import DocumentProcesser
+from app.application.doc_processor import DocumentProcessor
 from app.application.vector_store_service import VectorStoreService
 
 
@@ -22,7 +22,7 @@ class FileIngestionService:
         self,
         uow: AbstractUnitOfWork,
         file_storage: AbstractFileStorageRepository,
-        doc_processor: DocumentProcesser,
+        doc_processor: DocumentProcessor,
         vector_service: VectorStoreService,
         root_dir: Path,
     ):

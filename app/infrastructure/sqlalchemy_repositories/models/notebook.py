@@ -1,0 +1,45 @@
+"""Module for session  database model"""
+
+from app.infrastructure.db import Base
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from datetime import datetime, timezone
+from sqlalchemy import ForeignKey, String, DateTime, func
+import uuid
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+from typing import TYPE_CHECKING, List, Optional
+
+if TYPE_CHECKING:
+    from app.infrastructure.sqlalchemy_repositories.models.message import Message
+    from app.infrastructure.sqlalchemy_repositories.models.file import FileMetadata
+    from app.infrastructure.sqlalchemy_repositories.models.user import User
+
+
+class Notebook(Base):
+    __tablename__ = "notebook"
+
+    notebook_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        default=uuid.uuid4,
+        unique=True,
+        index=True,
+        nullable=False,
+        primary_key=True,
+    )
+    title: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("user.user_id"))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        default=lambda: datetime.now(timezone.utc),
+    )
+    messages: Mapped[list["Message"]] = relationship(
+        back_populates="notebook",
+        cascade="all, delete-orphan",
+        order_by="Message.created_at",
+    )
+    files: Mapped[List["FileMetadata"]] = relationship(
+        back_populates="notebook",
+        cascade="all, delete-orphan",
+        order_by="FileMetadata.created_at",
+    )
+    user: Mapped["User"] = relationship(back_populates="notebooks")

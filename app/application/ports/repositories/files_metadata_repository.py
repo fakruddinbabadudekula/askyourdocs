@@ -9,9 +9,6 @@ class AbstractFilesMetadataRepository(ABC):
     async def save(self, file_metadata: FileMetadata) -> None: ...
 
     @abstractmethod
-    async def update(self, file_metadata: FileMetadata) -> None: ...
-
-    @abstractmethod
     async def get_file_metadata(self, file_id: UUID) -> FileMetadata | None: ...
 
     @abstractmethod

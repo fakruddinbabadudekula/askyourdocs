@@ -9,9 +9,6 @@ class AbstractMessageRepository(ABC):
     async def save(self, message: Message) -> None: ...
 
     @abstractmethod
-    async def update(self, message: Message) -> None: ...
-
-    @abstractmethod
     async def get_message(self, message_id: UUID) -> Message | None: ...
 
     @abstractmethod

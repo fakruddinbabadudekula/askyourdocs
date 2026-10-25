@@ -1,25 +1,18 @@
 from fastapi import FastAPI
-from app.core.db import init_db
 from app.core.logging import setup_logging
 from logging import getLogger
-from app.api.exception_handlers import register_exception_handlers
-from app.api.routes.auth import router as auth_router
-from app.api.routes.register import router as register_router
-from app.api.routes.test import router as test_router
+from app.interface.api.cookie import CookiePolicy
+from app.interface.api.exception_handlers import register_exception_handlers
+from app.interface.api.routes.auth import router as auth_router
+from app.interface.api.routes.register import router as register_router
+from app.interface.api.routes.upload import router as upload_router
+from app.interface.api.routes.chat import router as chat_router
+from app.interface.api.routes.test import router as test_router
+from app.interface.api.middleware import logger_middleware
 from contextlib import asynccontextmanager
-from app.api.routes.chat import router as chat_router
-from app.api.routes.history import router as history_router
-from app.api.routes.upload import router as file_upload
-from app.api.middleware import logger_middleware
+from app.root import Container
 from app.core.config import settings
 
-
-def create_required_dir():
-    for path in [
-        settings.FILE_UPLOAD_PATH,
-        settings.VECTOR_FOLDER,
-    ]:
-        path.mkdir(parents=True, exist_ok=True)
 
 
 logger = getLogger(__name__)
@@ -28,9 +21,9 @@ logger = getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app):
     setup_logging()
-    create_required_dir()
     logger.info("Server Started")
-    await init_db()
+    app.state.container=await Container.create()
+    app.state.cookie_policy=CookiePolicy(secure=settings.COOKIE_SECURE)
     logger.info("Tables are created ")
     yield
     logger.info("Server terminated")
@@ -51,7 +44,6 @@ tags_metadata = [
         "name": "chat",
         "description": "Ask questions and get RAG-powered, cited answers.",
     },
-    {"name": "history", "description": "Browse past sessions and messages."},
     {"name": "health", "description": "For health checkup."},
 ]
 app = FastAPI(
@@ -71,12 +63,12 @@ Most endpoints require `Authorization: Bearer <access_token>`, obtained via
 )
 app.middleware("http")(logger_middleware)
 register_exception_handlers(app=app)
+
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
 app.include_router(register_router, prefix="/api/v1", tags=["register"])
-app.include_router(test_router, prefix="/api/v1/test", tags=["test"])
+app.include_router(upload_router, prefix="/api/v1", tags=["upload"])
 app.include_router(chat_router, prefix="/api/v1", tags=["chat"])
-app.include_router(history_router, prefix="/api/v1/history", tags=["history"])
-app.include_router(file_upload, prefix="/api/v1", tags=["upload"])
+app.include_router(test_router, prefix="/api/v1", tags=["test"])
 
 
 @app.get("/")

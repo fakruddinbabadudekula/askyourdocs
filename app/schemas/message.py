@@ -30,7 +30,7 @@ class Message:
     role: MessageRole
     content: str
     notebook_id: UUID
-    top_k_docs_ids_with_index: list[Citation] | None
+    citation_refs: list[Citation] | None
     created_at: datetime
 
     @classmethod
@@ -39,13 +39,13 @@ class Message:
         role: MessageRole,
         content: str,
         notebook_id: UUID,
-        top_k_docs_ids_with_index: list[Citation] | None = None,
+        citation_refs: list[Citation] | None = None,
     ) -> "Message":
         return cls(
             message_id=uuid4(),
             created_at=datetime.now(timezone.utc),
             role=role,
-            top_k_docs_ids_with_index=top_k_docs_ids_with_index,
+            citation_refs=citation_refs,
             content=content,
             notebook_id=notebook_id,
         )
