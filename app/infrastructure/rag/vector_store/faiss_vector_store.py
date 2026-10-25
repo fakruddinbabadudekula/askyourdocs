@@ -64,7 +64,7 @@ class FaissStore(AbstractVectorStore):
         return ids
 
     async def delete(self, chunk_ids):
-        return self._store.adelete(chunk_ids)
+        return await self._store.adelete(chunk_ids)
 
     def get_retriever(self, **kwargs):
         search_type = self._retreiver_filter.search_type

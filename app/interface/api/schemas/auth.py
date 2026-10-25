@@ -9,7 +9,7 @@ class BaseUser(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class RegisterUser(BaseModel):
+class RegisterUserData(BaseModel):
     name: str
     password: str
     email: EmailStr

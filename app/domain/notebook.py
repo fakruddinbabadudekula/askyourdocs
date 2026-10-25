@@ -21,3 +21,6 @@ class Notebook:
 
     def rename_title(self, title: str) -> None:
         self.title = title
+
+    def is_belong_to(self,user_id:UUID)->bool:
+        return self.user_id==user_id

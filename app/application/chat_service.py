@@ -27,7 +27,7 @@ class ChatService:
     ) -> ChatResponse:
         async with self._uow:
             notebook = await self._uow.notebooks.get_notebook(notebook_id)
-            if notebook is None:
+            if notebook is None or not notebook.is_belong_to(user_id):
                 raise InvalidCredentialsException(
                     "Invalid Notebook Id",
                     details={
@@ -35,6 +35,7 @@ class ChatService:
                         "notebook_id": str(notebook_id),
                     },
                 )
+
             user_message = Message.create(MessageRole.USER, query, notebook_id, None)
             history_messages = await self._uow.messages.get_messages(notebook_id)
             retriever = self._vector_store.get_retriever(

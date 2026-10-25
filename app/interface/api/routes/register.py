@@ -3,7 +3,8 @@ contains only register router"""
 
 from fastapi import APIRouter, Depends
 from app.application.auth_service import AuthService
-from app.interface.api.schemas.auth import BaseUser, RegisterUser
+from app.interface.api.schemas.auth import BaseUser, RegisterUserData
+from app.application.schemas.auth_service import RegisterUser
 from fastapi import status
 from app.interface.api.dependencies import get_auth_service
 
@@ -20,7 +21,7 @@ router = APIRouter()
     },
 )
 async def register(
-    payload: RegisterUser, auth_service: AuthService = Depends(get_auth_service)
+    payload: RegisterUserData, auth_service: AuthService = Depends(get_auth_service)
 ):
     """
     Create a new user account.
@@ -28,4 +29,5 @@ async def register(
     Passwords are hashed with Argon2 before storage; the raw password is
     never persisted or returned.
     """
-    return await auth_service.register(payload)
+    register_user = RegisterUser(**payload.model_dump())
+    return await auth_service.register(register_user)

@@ -1,5 +1,4 @@
-import datetime
-from time import timezone
+from datetime import datetime
 from app.application.ports.repositories.refresh_token_repository import (
     AbstractRefreshTokenRepository,
 )
@@ -9,7 +8,10 @@ from app.infrastructure.sqlalchemy_repositories.models.refresh_token import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, update
-from app.infrastructure.sqlalchemy_repositories.mappers import refresh_token_to_orm, orm_to_refresh_token
+from app.infrastructure.sqlalchemy_repositories.mappers import (
+    refresh_token_to_orm,
+    orm_to_refresh_token,
+)
 from uuid import UUID
 
 
@@ -35,8 +37,9 @@ class RefreshTokenRepository(AbstractRefreshTokenRepository):
         token_orm = result.scalar_one_or_none()
         return orm_to_refresh_token(token_orm) if token_orm else None
 
-    async def revoke_all_tokens_by_family_id(self, family_id: UUID) -> None:
-        now = datetime.now(timezone.utc)
+    async def revoke_all_tokens_by_family_id(
+        self, family_id: UUID, now: datetime
+    ) -> None:
         await self._db.execute(
             update(OrmRefreshToken)
             .where(OrmRefreshToken.family_id == family_id)

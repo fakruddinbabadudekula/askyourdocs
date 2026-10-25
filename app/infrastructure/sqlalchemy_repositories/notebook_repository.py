@@ -4,6 +4,7 @@ from app.infrastructure.sqlalchemy_repositories.models.notebook import (
 )
 from app.application.ports.repositories.notebook_repository import (
     AbstractNotebookRepository,
+    NotebookSort,
 )
 from app.infrastructure.sqlalchemy_repositories.mappers import (
     notebook_to_orm,
@@ -35,10 +36,15 @@ class NotebookRepository(AbstractNotebookRepository):
         notebook_orm = result.scalar_one_or_none()
         return orm_to_notebook(notebook_orm) if notebook_orm else None
 
-    async def get_notebooks(self, user_id: UUID) -> list[Notebook]:
-        result = await self._db.execute(
-            select(OrmNotebook).where(OrmNotebook.user_id == user_id)
-        )
+    async def get_notebooks(
+        self, user_id: UUID, order_by=NotebookSort.CREATED_AT_ASC
+    ) -> list[Notebook]:
+        statement = select(OrmNotebook).where(OrmNotebook.user_id == user_id)
+        if order_by == NotebookSort.CREATED_AT_ASC:
+            statement = statement.order_by(OrmNotebook.created_at.asc())
+        else:
+            statement = statement.order_by(OrmNotebook.created_at.desc())
+        result = await self._db.execute(statement)
         notebooks_orm = result.scalars().all()
         return [orm_to_notebook(notebook) for notebook in notebooks_orm]
 

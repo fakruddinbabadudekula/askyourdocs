@@ -28,8 +28,9 @@ async def upload(
     file_ingestion_service: FileIngestionService = Depends(get_file_ingestion_service),
 ):
     stream = to_async_iterator(file)
-    file_name = file.filename
-    file_ext = Path(file.filename).suffix[1:] #[1:] to remove ".", suffix return .ext, but we need only ext so we slice it.
+    file_path = Path(file.filename)
+    file_name=file_path.stem
+    file_ext = file_path.suffix[1:].lower() #[1:] to remove ".", suffix return .ext, but we need only ext so we slice it.
     file_metadata = await file_ingestion_service.upload_files(
         stream, file_name, file_ext, notebook_id, user_id
     )

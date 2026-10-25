@@ -1,6 +1,7 @@
 from app.domain.message import Message
 from app.application.ports.repositories.message_repository import (
     AbstractMessageRepository,
+    MessageSort,
 )
 from app.infrastructure.sqlalchemy_repositories.models.message import (
     Message as OrmMessage,
@@ -28,10 +29,13 @@ class MessageRepository(AbstractMessageRepository):
         message_orm = result.scalar_one_or_none()
         return orm_to_message(message_orm) if message_orm else None
 
-    async def get_messages(self, notebook_id: UUID) -> list[Message | None]:
-        result = await self._db.execute(
-            select(OrmMessage).where(OrmMessage.notebook_id == notebook_id)
-        )
+    async def get_messages(self, notebook_id, order_by=MessageSort.CREATED_AT_ASC):
+        statement = select(OrmMessage).where(OrmMessage.notebook_id == notebook_id)
+        if order_by == MessageSort.CREATED_AT_ASC:
+            statement = statement.order_by(OrmMessage.created_at.asc())
+        else:
+            statement = statement.order_by(OrmMessage.created_at.desc())
+        result = await self._db.execute(statement)
         messages_orm = result.scalars().all()
         return [orm_to_message(message) for message in messages_orm]
 

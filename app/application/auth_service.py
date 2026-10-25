@@ -48,7 +48,8 @@ class AuthService:
 
     async def register(self, user_data: RegisterUser) -> User:
         new_user = User.create(
-            **user_data.model_dump(exclude={"password"}),
+            email=user_data.email,
+            name=user_data.name,
             hashed_password=self._password_hasher.hash_password(user_data.password),
         )
         async with self._uow:
@@ -74,7 +75,7 @@ class AuthService:
                     "Invalid credentials email or password",
                     details={"user_email": user_data.email},
                 )
-            
+
             token_data = self._generate_tokens(user.user_id, now)
             await self._uow.refresh_tokens.save(
                 RefreshToken.create(

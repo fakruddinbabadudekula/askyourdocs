@@ -74,7 +74,7 @@ class FileIngestionService:
         async with self._uow:
             if notebook_id:
                 notebook = await self._uow.notebooks.get_notebook(notebook_id)
-                if notebook is None:
+                if notebook is None or not notebook.is_belong_to(user_id):
                     raise InvalidCredentialsException(
                         "Invalid Notebook Id",
                         details={
