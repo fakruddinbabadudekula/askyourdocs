@@ -1,6 +1,6 @@
 from abc import abstractmethod, ABC
 from uuid import UUID
-from app.schemas.user import User
+from app.domain.user import User
 
 
 class AbstractUserRepository(ABC):

@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from sqlalchemy import ForeignKey, DateTime, func, Text, Enum as SqlEnum
 import uuid
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID, JSON
-from app.schemas.message import MessageRole
+from app.domain.message import MessageRole
 from datetime import datetime
 from typing import TYPE_CHECKING
 

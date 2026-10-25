@@ -1,4 +1,4 @@
-from app.schemas.notebook import Notebook
+from app.domain.notebook import Notebook
 from app.infrastructure.sqlalchemy_repositories.models.notebook import (
     Notebook as OrmNotebook,
 )

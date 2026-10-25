@@ -3,7 +3,7 @@ from time import timezone
 from app.application.ports.repositories.refresh_token_repository import (
     AbstractRefreshTokenRepository,
 )
-from app.schemas.refresh_token import RefreshToken, TokenStatus
+from app.domain.refresh_token import RefreshToken, TokenStatus
 from app.infrastructure.sqlalchemy_repositories.models.refresh_token import (
     RefreshToken as OrmRefreshToken,
 )

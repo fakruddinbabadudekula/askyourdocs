@@ -3,7 +3,7 @@ from uuid import UUID
 from app.application.ports.unit_of_work import AbstractUnitOfWork
 from app.application.ports.rag.vector_store import AbstractVectorStore
 from app.core.exceptions import InvalidCredentialsException
-from app.schemas.message import Message, MessageRole, Citation
+from app.domain.message import Message, MessageRole, Citation
 from app.application.workflow import LangGraphWorkflow
 from app.application.schemas.chat_service import ChatResponse
 

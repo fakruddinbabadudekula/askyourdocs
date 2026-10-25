@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from uuid import UUID
-from app.schemas.message import Message
+from app.domain.message import Message
 
 
 class AbstractMessageRepository(ABC):

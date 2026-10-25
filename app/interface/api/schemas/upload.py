@@ -1,7 +1,7 @@
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
-from app.schemas.file_metadata import FileType
+from app.domain.file_metadata import FileType
 from datetime import datetime
 
 

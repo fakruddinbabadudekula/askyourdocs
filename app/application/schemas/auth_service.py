@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from datetime import datetime
-from time import strftime
 import uuid
 
 

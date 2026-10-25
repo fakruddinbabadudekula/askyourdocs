@@ -1,4 +1,4 @@
-from app.schemas.message import Message
+from app.domain.message import Message
 from app.application.ports.repositories.message_repository import (
     AbstractMessageRepository,
 )

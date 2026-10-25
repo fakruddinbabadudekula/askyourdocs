@@ -10,9 +10,9 @@ from app.core.exceptions import (
     InvalidFilePaths,
     UnSupportedResource,
 )
-from app.schemas.notebook import Notebook
-from app.schemas.document_ref import DocumentRef
-from app.schemas.file_metadata import FileMetadata
+from app.domain.notebook import Notebook
+from app.domain.document_ref import DocumentRef
+from app.domain.file_metadata import FileMetadata
 from app.application.doc_processor import DocumentProcessor
 from app.application.vector_store_service import VectorStoreService
 

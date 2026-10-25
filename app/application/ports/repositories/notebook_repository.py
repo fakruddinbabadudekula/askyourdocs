@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from uuid import UUID
-from app.schemas.notebook import Notebook
+from app.domain.notebook import Notebook
 
 
 class AbstractNotebookRepository(ABC):

@@ -1,9 +1,9 @@
-from app.schemas.user import User
-from app.schemas.message import Message, Citation
-from app.schemas.file_metadata import FileMetadata
-from app.schemas.document_ref import DocumentRef
-from app.schemas.notebook import Notebook
-from app.schemas.refresh_token import RefreshToken
+from app.domain.user import User
+from app.domain.message import Message, Citation
+from app.domain.file_metadata import FileMetadata
+from app.domain.document_ref import DocumentRef
+from app.domain.notebook import Notebook
+from app.domain.refresh_token import RefreshToken
 from app.infrastructure.sqlalchemy_repositories.models.user import User as OrmUser
 from app.infrastructure.sqlalchemy_repositories.models.refresh_token import (
     RefreshToken as OrmRefreshToken,

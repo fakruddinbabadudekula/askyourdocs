@@ -1,6 +1,6 @@
 from app.application.ports.repositories.user_repository import AbstractUserRepository
 from app.core.exceptions import DuplicateResourceException
-from app.schemas.user import User
+from app.domain.user import User
 from app.infrastructure.sqlalchemy_repositories.models.user import User as OrmUser
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession

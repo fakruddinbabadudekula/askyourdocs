@@ -18,3 +18,6 @@ class Notebook:
             title=title,
             created_at=datetime.now(timezone.utc),
         )
+
+    def rename_title(self, title: str) -> None:
+        self.title = title

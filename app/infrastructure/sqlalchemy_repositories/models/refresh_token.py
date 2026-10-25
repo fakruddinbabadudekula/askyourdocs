@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from sqlalchemy import DateTime, func, Text, ForeignKey
 import uuid
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
-from app.schemas.refresh_token import TokenStatus
+from app.domain.refresh_token import TokenStatus
 
 
 class RefreshToken(Base):

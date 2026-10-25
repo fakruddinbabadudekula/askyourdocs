@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from app.schemas.message import Message
+from app.domain.message import Message
 
 
 @dataclass

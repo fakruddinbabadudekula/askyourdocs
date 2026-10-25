@@ -1,6 +1,6 @@
 from abc import abstractmethod,ABC
 from uuid import UUID
-from app.schemas.refresh_token import RefreshToken
+from app.domain.refresh_token import RefreshToken
 
 class AbstractRefreshTokenRepository(ABC):
     @abstractmethod

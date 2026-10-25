@@ -1,7 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from uuid import UUID, uuid4
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 
 
@@ -49,3 +49,21 @@ class RefreshToken:
             expires_at=expires_at,
             revoked_at=None,
         )
+
+    def is_revoked(self) -> bool:
+        return self.status == TokenStatus.REVOKED
+
+    def is_expired(self, now: datetime) -> bool:
+        return self.expires_at < now
+
+    def mark_expired(self, now: datetime) -> None:
+        if self.expires_at <= now and self.status == TokenStatus.ACTIVE:
+            self.status = TokenStatus.EXPIRED
+
+    def revoke(self, now: datetime) -> None:
+        if self.status == TokenStatus.ACTIVE:
+            self.status = TokenStatus.REVOKED
+            self.revoked_at = now
+
+    def is_valid(self, now: datetime) -> bool:
+        return self.status == TokenStatus.ACTIVE and not self.is_expired(now)

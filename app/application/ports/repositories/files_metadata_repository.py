@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from uuid import UUID
-from app.schemas.file_metadata import FileMetadata
+from app.domain.file_metadata import FileMetadata
 
 
 class AbstractFilesMetadataRepository(ABC):

@@ -7,7 +7,7 @@ from langgraph.graph import MessagesState
 from langchain_core.runnables import RunnableConfig
 from typing import List, Dict
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage,SystemMessage
-from app.schemas.message import Message, MessageRole
+from app.domain.message import Message, MessageRole
 from logging import getLogger
 
 logger = getLogger(__name__)

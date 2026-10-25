@@ -1,5 +1,5 @@
-from app.schemas.refresh_token import RefreshToken, TokenStatus
-from app.schemas.user import User
+from app.domain.refresh_token import RefreshToken, TokenStatus
+from app.domain.user import User
 from app.application.schemas.auth_service import LoginData, TokenData, RegisterUser
 from app.application.ports.unit_of_work import AbstractUnitOfWork
 from app.application.security import (
@@ -58,9 +58,10 @@ class AuthService:
         return new_user
 
     async def login(self, user_data: LoginData) -> TokenData:
+        now = datetime.now(timezone.utc)
         async with self._uow:
             user = await self._uow.users.get_user_by_email(user_data.email)
-            if user == None:
+            if user is None:
                 self._password_hasher.verify_password(user_data.password, _DUMMY_HASH)
                 raise InvalidCredentialsException(
                     "Invalid credentials email or password",
@@ -73,7 +74,7 @@ class AuthService:
                     "Invalid credentials email or password",
                     details={"user_email": user_data.email},
                 )
-            now = datetime.now(timezone.utc)
+            
             token_data = self._generate_tokens(user.user_id, now)
             await self._uow.refresh_tokens.save(
                 RefreshToken.create(
@@ -90,6 +91,7 @@ class AuthService:
             return token_data
 
     async def refresh(self, token: str) -> TokenData:
+        now = datetime.now(timezone.utc)
         async with self._uow:
             stored_token = await self._uow.refresh_tokens.get_token_by_hash(
                 self._hash_service.hash_content(token)
@@ -99,7 +101,7 @@ class AuthService:
                     "Invalid credentials token",
                     details={"WWW-Authenticate": "Bearer"},
                 )
-            if stored_token.status == TokenStatus.REVOKED:
+            if stored_token.is_revoked():
                 await self._uow.refresh_tokens.revoke_all_tokens_by_family_id(
                     stored_token.family_id
                 )
@@ -108,9 +110,9 @@ class AuthService:
                     "Refresh token reuse detected; token revoked",
                     details={"WWW-Authenticate": "Bearer"},
                 )
-            if stored_token.expires_at < datetime.now(timezone.utc):
-                stored_token.status = TokenStatus.EXPIRED
-                await self._uow.refresh_tokens.save(stored_token)
+            if stored_token.is_expired(now):
+                stored_token.mark_expired(now)
+                await self._uow.refresh_tokens.update(stored_token)
                 await self._uow.commit()
                 raise RefreshTokenValidationException(
                     "Refresh token expired",
@@ -123,9 +125,8 @@ class AuthService:
                     "Invalid credentials token",
                     details={"WWW-Authenticate": "Bearer"},
                 )
-            now = datetime.now(timezone.utc)
             token_data = self._generate_tokens(user.user_id, now)
-            stored_token.status = TokenStatus.REVOKED
+            stored_token.revoke(now)
             await self._uow.refresh_tokens.update(stored_token)
             await self._uow.refresh_tokens.save(
                 RefreshToken.create(
@@ -142,19 +143,19 @@ class AuthService:
             return token_data
 
     async def logout(self, token: str):
+        now = datetime.now(timezone.utc)
         async with self._uow:
             stored_token = await self._uow.refresh_tokens.get_token_by_hash(
                 self._hash_service.hash_content(token)
             )
-            if (
-                stored_token is None
-                or stored_token.expires_at < datetime.now(timezone.utc)()
-            ):
-                stored_token.status = TokenStatus.EXPIRED
-                await self._uow.refresh_tokens.save(stored_token)
+            if stored_token is None:
+                return
+            if stored_token.is_expired(now):
+                stored_token.mark_expired(now)
+                await self._uow.refresh_tokens.update(stored_token)
                 await self._uow.commit()
                 return  # idempotent, nothing to do
-            if stored_token.status == TokenStatus.REVOKED:
+            if stored_token.is_revoked():
                 await self._uow.refresh_tokens.revoke_all_tokens_by_family_id(
                     stored_token.family_id
                 )
@@ -163,6 +164,6 @@ class AuthService:
                     "Refresh token reuse detected; session revoked",
                     details={"WWW-Authenticate": "Bearer"},
                 )
-            stored_token.status = TokenStatus.REVOKED
-            await self._uow.refresh_tokens.save(stored_token)
+            stored_token.revoke(now)
+            await self._uow.refresh_tokens.update(stored_token)
             await self._uow.commit()

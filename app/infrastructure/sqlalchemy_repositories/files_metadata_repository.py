@@ -1,4 +1,4 @@
-from app.schemas.file_metadata import FileMetadata
+from app.domain.file_metadata import FileMetadata
 from app.application.ports.repositories.files_metadata_repository import (
     AbstractFilesMetadataRepository,
 )

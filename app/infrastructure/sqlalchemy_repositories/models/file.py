@@ -1,6 +1,6 @@
 """Module contain file Database Model"""
 
-from app.schemas.file_metadata import FileType
+from app.domain.file_metadata import FileType
 from app.infrastructure.db import Base
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from datetime import datetime, timezone
